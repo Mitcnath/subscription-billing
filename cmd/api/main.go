@@ -62,7 +62,7 @@ func main() {
 		// Protected routes - require valid JWT token in Authorization header
 		protected := accountsGroup.Group("").Use(middleware.RequireAuth())
 		{
-			protected.GET("", accountsProvider.GetAccounts)
+			protected.GET("/", accountsProvider.GetAccounts)
 			protected.GET("/me", accountsProvider.GetMe)
 		}
 	}
