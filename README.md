@@ -29,6 +29,77 @@ make run
 
 Swagger UI is available at `http://localhost:8080/swagger/index.html`.
 
+## Database Schema
+
+```mermaid
+erDiagram
+    subscription_plans {
+        smallserial id PK
+        varchar name
+        bigint amount
+        varchar currency
+        text description
+        billing_interval billing_interval
+        plan_status status
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    user_accounts {
+        uuid id PK
+        text username
+        text email
+        text password_hash
+        timestamptz created_at
+        timestamptz updated_at
+        timestamptz deleted_at
+    }
+
+    subscriptions {
+        bigserial id PK
+        uuid user_account_id FK
+        smallint subscription_plan_id FK
+        subscription_status status
+        timestamptz trial_ends_at
+        timestamptz current_period_ends_at
+        boolean cancel_at_period_end
+        timestamptz cancelled_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    payment_methods {
+        bigserial id PK
+        uuid user_account_id FK
+        varchar external_id
+        varchar brand
+        varchar last_four
+        smallint exp_month
+        smallint exp_year
+        boolean is_default
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    invoices {
+        bigserial id PK
+        uuid user_account_id FK
+        bigint subscription_id FK
+        invoice_status status
+        bigint amount
+        varchar currency
+        varchar pdf_url
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    user_accounts ||--o{ subscriptions : "has"
+    user_accounts ||--o{ payment_methods : "has"
+    user_accounts ||--o{ invoices : "has"
+    subscription_plans ||--o{ subscriptions : "subscribed to"
+    subscriptions ||--o{ invoices : "generates"
+```
+
 ## General Flow
 
 ```mermaid
