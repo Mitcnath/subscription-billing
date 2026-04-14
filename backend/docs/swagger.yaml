@@ -1,0 +1,658 @@
+basePath: /
+definitions:
+  accounts.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  accounts.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        description: Minimum 8 characters for basic password strength
+        minLength: 8
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  accounts.UserAccounts:
+    properties:
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  invoice.InvoiceReadModel:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      paid:
+        $ref: '#/definitions/money.Money'
+      pdf_url:
+        type: string
+      status:
+        $ref: '#/definitions/invoice.Status'
+      subscription_name:
+        type: string
+      subscription_price:
+        $ref: '#/definitions/money.Money'
+      updated_at:
+        type: string
+      user_email:
+        type: string
+    type: object
+  invoice.Status:
+    enum:
+    - paid
+    - open
+    - void
+    - uncollectible
+    type: string
+    x-enum-varnames:
+    - InvoiceStatusPaid
+    - InvoiceStatusOpen
+    - InvoiceStatusVoid
+    - InvoiceStatusUncollectible
+  money.Money:
+    properties:
+      amount:
+        description: Amount in cents
+        type: integer
+      currency:
+        type: string
+    type: object
+  plans.BillingInterval:
+    enum:
+    - daily
+    - weekly
+    - bi_weekly
+    - monthly
+    - quarterly
+    - semi_annual
+    - annual
+    type: string
+    x-enum-varnames:
+    - BillingIntervalDaily
+    - BillingIntervalWeekly
+    - BillingIntervalBiWeekly
+    - BillingIntervalMonthly
+    - BillingIntervalQuarterly
+    - BillingIntervalSemiAnnual
+    - BillingIntervalAnnual
+  plans.CreatePlanRequest:
+    properties:
+      billing_interval:
+        $ref: '#/definitions/plans.BillingInterval'
+      description:
+        type: string
+      money:
+        $ref: '#/definitions/money.Money'
+      name:
+        type: string
+    required:
+    - billing_interval
+    - description
+    - money
+    - name
+    type: object
+  plans.PlanStatus:
+    enum:
+    - active
+    - deprecated
+    type: string
+    x-enum-varnames:
+    - PlanStatusActive
+    - PlanStatusDeprecated
+  plans.SubscriptionPlans:
+    properties:
+      billing_interval:
+        $ref: '#/definitions/plans.BillingInterval'
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      price:
+        $ref: '#/definitions/money.Money'
+      status:
+        $ref: '#/definitions/plans.PlanStatus'
+      updated_at:
+        type: string
+    type: object
+  plans.UpdatePlanRequest:
+    properties:
+      billing_interval:
+        $ref: '#/definitions/plans.BillingInterval'
+      description:
+        type: string
+      money:
+        $ref: '#/definitions/money.Money'
+      name:
+        type: string
+    type: object
+  subscription.Status:
+    enum:
+    - trial
+    - active
+    - past_due
+    - cancelled
+    type: string
+    x-enum-varnames:
+    - SubscriptionStatusTrial
+    - SubscriptionStatusActive
+    - SubscriptionStatusPastDue
+    - SubscriptionStatusCancelled
+  subscription.SubscriptionsReadModel:
+    properties:
+      cancel_at_period_end:
+        type: boolean
+      cancelled_at:
+        type: string
+      created_at:
+        type: string
+      current_period_ends_at:
+        type: string
+      id:
+        type: integer
+      plan_name:
+        type: string
+      plan_price:
+        $ref: '#/definitions/money.Money'
+      status:
+        $ref: '#/definitions/subscription.Status'
+      subscription_plan_billing_interval:
+        $ref: '#/definitions/plans.BillingInterval'
+      trial_ends_at:
+        type: string
+      updated_at:
+        type: string
+      user_account_email:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Subscription billing service for managing plans, subscriptions, and
+    payment methods.
+  title: Billing Service API
+  version: "1.0"
+paths:
+  /api/v1/accounts:
+    get:
+      parameters:
+      - default: 10
+        description: Number of results per page (max 100)
+        in: query
+        name: limit
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: created_at
+        description: Field to sort by
+        enum:
+        - username
+        - email
+        - created_at
+        in: query
+        name: sort_by
+        type: string
+      - default: asc
+        description: Sort direction
+        enum:
+        - asc
+        - desc
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List user accounts
+      tags:
+      - accounts
+  /api/v1/accounts/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/accounts.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Authenticate a user and return a JWT
+      tags:
+      - accounts
+  /api/v1/accounts/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/accounts.UserAccounts'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get the authenticated user's account
+      tags:
+      - accounts
+  /api/v1/accounts/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Register request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/accounts.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/accounts.UserAccounts'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user account
+      tags:
+      - accounts
+  /api/v1/invoices/{id}:
+    get:
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/invoice.InvoiceReadModel'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get an invoice by ID
+      tags:
+      - invoices
+  /api/v1/plans:
+    get:
+      parameters:
+      - default: 10
+        description: Number of results per page
+        in: query
+        name: limit
+        type: integer
+      - description: 'Cursor: last seen plan ID for pagination'
+        in: query
+        name: after
+        type: integer
+      - default: active
+        description: Filter by plan status
+        enum:
+        - active
+        - deprecated
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List subscription plans
+      tags:
+      - plans
+  /api/v1/plans/{id}:
+    get:
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              $ref: '#/definitions/plans.SubscriptionPlans'
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a subscription plan by ID
+      tags:
+      - plans
+  /api/v1/plans/create:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create plan request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/plans.CreatePlanRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/plans.SubscriptionPlans'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a subscription plan
+      tags:
+      - plans
+  /api/v1/plans/deprecate/{id}:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/plans.SubscriptionPlans'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Deprecate a subscription plan by ID
+      tags:
+      - plans
+  /api/v1/plans/update/{id}:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update plan request — all fields optional
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/plans.UpdatePlanRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/plans.SubscriptionPlans'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a subscription plan
+      tags:
+      - plans
+  /api/v1/subscriptions/{id}:
+    get:
+      parameters:
+      - description: Subscription ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/subscription.SubscriptionsReadModel'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get a subscription by ID
+      tags:
+      - subscriptions
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and your JWT token
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -1,0 +1,67 @@
+services:
+
+  # --- Database ---
+  # Official Postgres 16 image. Credentials and DB name are injected from .env.
+  # Data is persisted in a named volume so it survives container restarts.
+  # The healthcheck polls pg_isready every 5s — other services use
+  # "condition: service_healthy" to wait for Postgres to be ready before starting.
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- Migrations ---
+  # Uses the golang-migrate Docker image to run all .up.sql files in ./backend/migrations.
+  # Mounts the migrations folder into the container at /migrations.
+  # restart: "no" means it runs once and exits — it is not a long-running service.
+  # Only starts after the DB passes its healthcheck.
+  migrate:
+    image: migrate/migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend/migrations:/migrations
+    command: ["-path", "/migrations", "-database", "${DB_URL}", "up"]
+    restart: "no"
+
+  # --- Backend ---
+  # Built from ./backend/Dockerfile. Runs the compiled Go API server on port 8080.
+  # DSN (GORM connection string) and JWT_SECRET_KEY are injected from .env.
+  # Only starts after the DB passes its healthcheck.
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DSN: ${DSN}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+    ports:
+      - "8080:8080"
+
+  # --- Frontend ---
+  # Built from ./frontend/Dockerfile. nginx serves the static HTML on port 80.
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "80:80"
+
+# Named volume for Postgres data. Persists across "docker compose down".
+# Use "docker compose down -v" to wipe it (e.g. to reset the database).
+volumes:
+  postgres_data:

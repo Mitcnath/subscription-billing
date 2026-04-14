@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Billing — Choose a Plan</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0c0e17;
+      --surface:     #13161f;
+      --surface-2:   #1a1d2b;
+      --border:      #252838;
+      --border-h:    #353a52;
+      --muted:       #3d4260;
+      --sub:         #7b82a0;
+      --text:        #dde0f0;
+      --text-h:      #ffffff;
+      --accent:      #6c63ff;
+      --accent-h:    #8a83ff;
+      --accent-glow: rgba(108,99,255,.25);
+      --green:       #34d399;
+      --yellow:      #fbbf24;
+      --red:         #f87171;
+      --radius:      12px;
+      --shadow:      0 8px 40px rgba(0,0,0,.55);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── Shared utilities ──────────────────────── */
+    .hidden   { display: none !important; }
+    .mono     { font-family: "SF Mono","Fira Code",monospace; }
+    .sub-text { color: var(--sub); }
+    .bold     { font-weight: 700; }
+
+    /* ── Buttons ───────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      padding: 10px 22px;
+      border: none; border-radius: 9px;
+      font-size: 14px; font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s, box-shadow .15s;
+      text-decoration: none;
+    }
+    .btn:hover   { opacity: .88; }
+    .btn:active  { transform: scale(.97); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 0 0 var(--accent-glow);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 0 22px var(--accent-glow);
+      opacity: 1;
+    }
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border-h);
+    }
+    .btn-ghost {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-full    { width: 100%; }
+    .btn-sm      { padding: 7px 14px; font-size: 13px; }
+
+    /* ── Nav ───────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 48px;
+      height: 60px;
+      background: rgba(12,14,23,.85);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 800; font-size: 17px; letter-spacing: -.4px;
+      color: var(--text-h);
+    }
+    .nav-brand .logo-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+
+    .user-chip {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 5px 14px 5px 8px;
+      font-size: 13px; font-weight: 500;
+    }
+    .avatar {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; color: #fff;
+      flex-shrink: 0;
+    }
+
+    /* ── Hero ──────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 96px 24px 72px;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(108,99,255,.1);
+      border: 1px solid rgba(108,99,255,.25);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 12px; font-weight: 600; color: var(--accent-h);
+      margin-bottom: 22px;
+      text-transform: uppercase; letter-spacing: .8px;
+    }
+    .hero-eyebrow::before { content: "◈"; font-size: 10px; }
+
+    h1 {
+      font-size: clamp(32px, 5vw, 54px);
+      font-weight: 800;
+      letter-spacing: -.8px;
+      line-height: 1.1;
+      color: var(--text-h);
+      margin-bottom: 18px;
+    }
+
+    h1 .grad {
+      background: linear-gradient(135deg, var(--accent-h) 0%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 17px;
+      color: var(--sub);
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    /* ── Plans section ─────────────────────────── */
+    #plans-section {
+      padding: 0 24px 96px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      text-align: center;
+      font-size: 12px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 40px;
+    }
+
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 20px;
+    }
+
+    /* plan card */
+    .plan-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 28px 24px;
+      display: flex; flex-direction: column;
+      transition: border-color .2s, box-shadow .2s, transform .2s;
+      cursor: default;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .plan-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0;
+      transition: opacity .25s;
+    }
+
+    .plan-card:hover {
+      border-color: var(--border-h);
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+      transform: translateY(-3px);
+    }
+
+    .plan-card:hover::before { opacity: 1; }
+
+    .plan-card.featured {
+      border-color: rgba(108,99,255,.5);
+      background: linear-gradient(160deg, #181b2c 0%, #13161f 100%);
+    }
+
+    .plan-card.featured::before { opacity: .6; }
+
+    .featured-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(108,99,255,.15);
+      border: 1px solid rgba(108,99,255,.3);
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 11px; font-weight: 700; color: var(--accent-h);
+      text-transform: uppercase; letter-spacing: .5px;
+      margin-bottom: 14px;
+      align-self: flex-start;
+    }
+
+    .plan-name {
+      font-size: 18px; font-weight: 700;
+      color: var(--text-h);
+      margin-bottom: 6px;
+    }
+
+    .plan-desc {
+      font-size: 13px; color: var(--sub);
+      margin-bottom: 24px;
+      flex: 1;
+      line-height: 1.55;
+    }
+
+    .plan-price {
+      margin-bottom: 20px;
+    }
+
+    .plan-price .amount {
+      font-size: 34px; font-weight: 800;
+      color: var(--text-h); letter-spacing: -.5px;
+      line-height: 1;
+    }
+
+    .plan-price .currency {
+      font-size: 18px; font-weight: 600;
+      color: var(--sub);
+      vertical-align: super;
+      margin-right: 3px;
+    }
+
+    .plan-price .interval {
+      font-size: 13px; color: var(--sub);
+      margin-top: 4px;
+    }
+
+    .plan-cta {
+      width: 100%;
+      padding: 11px;
+      border-radius: 10px;
+      font-size: 14px; font-weight: 600;
+      border: none; cursor: pointer;
+      transition: all .15s;
+    }
+
+    .plan-cta-default {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border-h);
+    }
+    .plan-cta-default:hover { background: var(--border); border-color: var(--border-h); }
+
+    .plan-cta-featured {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(108,99,255,.3);
+    }
+    .plan-cta-featured:hover { background: var(--accent-h); box-shadow: 0 4px 28px rgba(108,99,255,.45); }
+
+    /* skeleton loader */
+    .skeleton {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      height: 280px;
+    }
+    .skel-line {
+      background: var(--border);
+      border-radius: 6px;
+      animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer {
+      0%,100% { opacity: .4; }
+      50%      { opacity: .9; }
+    }
+
+    /* error / empty */
+    .plans-message {
+      text-align: center;
+      padding: 64px 24px;
+      color: var(--sub);
+      grid-column: 1 / -1;
+    }
+    .plans-message .icon { font-size: 36px; margin-bottom: 12px; }
+    .plans-message p { font-size: 14px; }
+
+    /* ── Modals base ───────────────────────────── */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.72);
+      z-index: 200;
+      align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      width: 100%; max-width: 420px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      animation: popIn .18s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes popIn {
+      from { transform: scale(.93); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .modal-header {
+      padding: 24px 28px 0;
+    }
+    .modal-header h2 { font-size: 19px; font-weight: 800; color: var(--text-h); letter-spacing: -.3px; }
+    .modal-header p  { font-size: 13px; color: var(--sub); margin-top: 4px; }
+
+    .modal-body   { padding: 20px 28px; }
+    .modal-footer { padding: 0 28px 24px; display: flex; gap: 10px; justify-content: flex-end; }
+
+    /* ── Form elements ─────────────────────────── */
+    .field { margin-bottom: 14px; }
+
+    .field label {
+      display: block;
+      font-size: 11px; font-weight: 700;
+      color: var(--sub);
+      text-transform: uppercase; letter-spacing: .6px;
+      margin-bottom: 6px;
+    }
+
+    .field input, .field select {
+      width: 100%;
+      padding: 10px 13px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .field input:focus, .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(108,99,255,.12);
+    }
+    .field select option { background: var(--surface); }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .three-col { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; }
+
+    .tab-row {
+      display: flex; gap: 4px;
+      background: var(--bg);
+      border-radius: 9px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      flex: 1; padding: 7px; border: none; border-radius: 7px;
+      background: transparent; color: var(--sub);
+      cursor: pointer; font-size: 13px; font-weight: 600;
+      transition: all .15s;
+    }
+    .tab-btn.active { background: var(--accent); color: #fff; }
+
+    .err-msg {
+      color: var(--red); font-size: 12px;
+      background: rgba(248,113,113,.07);
+      border: 1px solid rgba(248,113,113,.18);
+      border-radius: 8px;
+      padding: 9px 12px;
+      margin-top: 4px;
+    }
+
+    /* divider */
+    .divider {
+      display: flex; align-items: center; gap: 10px;
+      color: var(--muted); font-size: 12px;
+      margin: 16px 0;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* ── Plan summary strip (inside payment modal) ── */
+    .plan-summary {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+    }
+    .plan-summary .ps-name { font-size: 14px; font-weight: 700; color: var(--text-h); }
+    .plan-summary .ps-int  { font-size: 12px; color: var(--sub); margin-top: 2px; }
+    .plan-summary .ps-price {
+      font-size: 17px; font-weight: 800; color: var(--accent-h);
+    }
+
+    /* card input styling */
+    .card-brand-row {
+      display: flex; gap: 6px; margin-bottom: 14px;
+    }
+    .card-chip {
+      display: flex; align-items: center; gap: 4px;
+      padding: 4px 10px;
+      border-radius: 6px; border: 1px solid var(--border);
+      font-size: 12px; color: var(--sub);
+      background: var(--bg);
+    }
+
+    .placeholder-note {
+      display: flex; align-items: flex-start; gap: 8px;
+      background: rgba(251,191,36,.06);
+      border: 1px solid rgba(251,191,36,.18);
+      border-radius: 9px;
+      padding: 10px 13px;
+      font-size: 12px; color: var(--yellow);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+    .placeholder-note .note-icon { flex-shrink: 0; font-size: 13px; }
+
+    /* ── Success screen ────────────────────────── */
+    #success-screen {
+      display: none;
+      position: fixed; inset: 0; z-index: 300;
+      background: var(--bg);
+      align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    #success-screen.open { display: flex; }
+
+    .success-card {
+      text-align: center;
+      max-width: 400px;
+    }
+    .success-icon {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: rgba(52,211,153,.12);
+      border: 2px solid rgba(52,211,153,.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 24px;
+    }
+    .success-card h2 {
+      font-size: 26px; font-weight: 800; color: var(--text-h);
+      margin-bottom: 10px; letter-spacing: -.4px;
+    }
+    .success-card p {
+      color: var(--sub); font-size: 14px; margin-bottom: 28px;
+    }
+
+    /* ── Toast ─────────────────────────────────── */
+    #toast-container {
+      position: fixed; bottom: 24px; right: 24px;
+      z-index: 999;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .toast {
+      padding: 10px 16px; border-radius: 9px;
+      font-size: 13px; font-weight: 500;
+      box-shadow: var(--shadow);
+      animation: toastIn .2s ease;
+    }
+    .toast-ok   { background: #0f2a1f; color: var(--green);  border: 1px solid rgba(52,211,153,.25);  }
+    .toast-err  { background: #2a0f0f; color: var(--red);   border: 1px solid rgba(248,113,113,.25); }
+    .toast-warn { background: #2a2010; color: var(--yellow); border: 1px solid rgba(251,191,36,.25); }
+    @keyframes toastIn {
+      from { transform: translateX(40px); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+
+    /* ── Account page ──────────────────────────── */
+    #account-page {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 48px 24px 96px;
+    }
+
+    .acct-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--sub); font-weight: 500;
+      cursor: pointer; margin-bottom: 28px;
+      background: none; border: none; transition: color .15s;
+    }
+    .acct-back:hover { color: var(--text); }
+
+    .acct-header { margin-bottom: 32px; }
+    .acct-header h2 {
+      font-size: 26px; font-weight: 800;
+      letter-spacing: -.4px; color: var(--text-h);
+    }
+    .acct-header p { font-size: 14px; color: var(--sub); margin-top: 4px; }
+
+    .acct-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .acct-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .acct-section-header h3 {
+      font-size: 14px; font-weight: 700; color: var(--text-h);
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .acct-section-body { padding: 22px 24px; }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    .info-item .info-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--muted); margin-bottom: 5px;
+    }
+    .info-item .info-value {
+      font-size: 14px; font-weight: 500; color: var(--text);
+      word-break: break-all;
+    }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 700; text-transform: capitalize;
+    }
+    .badge::before {
+      content: ''; width: 5px; height: 5px;
+      border-radius: 50%; background: currentColor;
+    }
+    .badge-green  { background: rgba(52,211,153,.1);  color: var(--green);    border: 1px solid rgba(52,211,153,.2);  }
+    .badge-yellow { background: rgba(251,191,36,.1);  color: var(--yellow);   border: 1px solid rgba(251,191,36,.2);  }
+    .badge-red    { background: rgba(248,113,113,.1); color: var(--red);      border: 1px solid rgba(248,113,113,.2); }
+    .badge-blue   { background: rgba(108,99,255,.1);  color: var(--accent-h); border: 1px solid rgba(108,99,255,.2);  }
+    .badge-muted  { background: rgba(61,66,96,.2);    color: var(--sub);      border: 1px solid var(--border); }
+
+    .pending-note {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: rgba(251,191,36,.05);
+      border: 1px solid rgba(251,191,36,.15);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 12px; color: var(--yellow); line-height: 1.6;
+    }
+    .pending-note .pn-icon { flex-shrink: 0; margin-top: 1px; }
+    .pending-note code {
+      font-family: "SF Mono","Fira Code",monospace;
+      background: rgba(251,191,36,.12); padding: 1px 6px;
+      border-radius: 4px; font-size: 11px;
+    }
+
+    .cancel-zone {
+      margin-top: 20px; padding-top: 20px;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .cancel-zone p { font-size: 13px; color: var(--sub); line-height: 1.55; }
+    .btn-danger {
+      flex-shrink: 0;
+      background: rgba(248,113,113,.08); color: var(--red);
+      border: 1px solid rgba(248,113,113,.2);
+      padding: 9px 18px; border-radius: 9px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-danger:hover { background: rgba(248,113,113,.15); }
+
+    .pm-card {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 16px; margin-bottom: 10px;
+    }
+    .pm-left { display: flex; align-items: center; gap: 12px; }
+    .pm-brand-chip {
+      width: 40px; height: 26px; border-radius: 5px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: var(--sub);
+    }
+    .pm-info .pm-number { font-size: 13px; font-weight: 600; color: var(--text); }
+    .pm-info .pm-expiry { font-size: 12px; color: var(--sub); margin-top: 2px; }
+    .pm-default { font-size: 11px; color: var(--accent-h); font-weight: 600; }
+
+    .inv-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 0; border-bottom: 1px solid var(--border);
+    }
+    .inv-row:last-child { border-bottom: none; }
+    .inv-left .inv-plan { font-size: 13px; font-weight: 600; color: var(--text); }
+    .inv-left .inv-date { font-size: 12px; color: var(--sub); margin-top: 2px; }
+    .inv-right { display: flex; align-items: center; gap: 12px; }
+    .inv-amount { font-size: 14px; font-weight: 700; color: var(--text-h); }
+    .inv-pdf {
+      font-size: 12px; color: var(--accent-h); font-weight: 600;
+      text-decoration: none;
+      background: rgba(108,99,255,.1); border: 1px solid rgba(108,99,255,.2);
+      border-radius: 6px; padding: 3px 9px; transition: background .15s;
+    }
+    .inv-pdf:hover { background: rgba(108,99,255,.2); }
+
+    /* ── Footer ────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 24px 48px;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 12px; color: var(--muted);
+    }
+
+    @media (max-width: 600px) {
+      nav { padding: 0 20px; }
+      footer { flex-direction: column; gap: 8px; text-align: center; }
+      .hero { padding: 64px 16px 48px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════
+     NAV
+════════════════════════════════════ -->
+<nav>
+  <div class="nav-brand">
+    <div class="logo-dot"></div>
+    Billing
+  </div>
+  <div class="nav-right" id="nav-right">
+    <!-- injected by JS: either Sign In btn or user chip + sign out -->
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════
+     LANDING PAGE
+════════════════════════════════════ -->
+<div id="landing-page">
+<section class="hero">
+  <div class="hero-eyebrow">Simple, transparent pricing</div>
+  <h1>Plans that scale<br>with <span class="grad">your growth</span></h1>
+  <p>Pick a plan, add a payment method, and you're good to go. No hidden fees, cancel any time.</p>
+</section>
+
+<!-- ════════════════════════════════════
+     PLANS
+════════════════════════════════════ -->
+<section id="plans-section">
+  <p class="section-label">Available plans</p>
+  <div class="plans-grid" id="plans-grid">
+    <!-- skeleton -->
+    <div class="skeleton">
+      <div class="skel-line" style="height:14px;width:60%;margin-bottom:10px"></div>
+      <div class="skel-line" style="height:10px;width:90%;margin-bottom:6px"></div>
+      <div class="skel-line" style="height:10px;width:75%;margin-bottom:30px"></div>
+      <div class="skel-line" style="height:36px;width:45%;margin-bottom:8px"></div>
+      <div class="skel-line" style="height:10px;width:30%"></div>
+    </div>
+    <div class="skeleton">
+      <div class="skel-line" style="height:14px;width:50%;margin-bottom:10px"></div>
+      <div class="skel-line" style="height:10px;width:85%;margin-bottom:6px"></div>
+      <div class="skel-line" style="height:10px;width:70%;margin-bottom:30px"></div>
+      <div class="skel-line" style="height:36px;width:45%;margin-bottom:8px"></div>
+      <div class="skel-line" style="height:10px;width:30%"></div>
+    </div>
+    <div class="skeleton">
+      <div class="skel-line" style="height:14px;width:55%;margin-bottom:10px"></div>
+      <div class="skel-line" style="height:10px;width:80%;margin-bottom:6px"></div>
+      <div class="skel-line" style="height:10px;width:65%;margin-bottom:30px"></div>
+      <div class="skel-line" style="height:36px;width:45%;margin-bottom:8px"></div>
+      <div class="skel-line" style="height:10px;width:30%"></div>
+    </div>
+  </div>
+</section>
+
+</div><!-- /#landing-page -->
+
+<!-- ════════════════════════════════════
+     FOOTER
+════════════════════════════════════ -->
+<footer id="footer-el">
+  <span>© 2026 Billing Service</span>
+  <span>All prices shown in USD · Cancel anytime</span>
+</footer>
+
+<!-- ════════════════════════════════════
+     ACCOUNT PAGE
+════════════════════════════════════ -->
+<div id="account-page" class="hidden">
+  <button class="acct-back" onclick="showLanding()">← Back to Plans</button>
+
+  <div class="acct-header">
+    <h2>My Account</h2>
+    <p>Manage your profile, subscription, and billing details.</p>
+  </div>
+
+  <!-- ── Profile ── -->
+  <div class="acct-section">
+    <div class="acct-section-header">
+      <h3>◉ Profile</h3>
+    </div>
+    <div class="acct-section-body">
+      <div class="info-grid" id="profile-grid">
+        <div class="info-item">
+          <div class="info-label">Username</div>
+          <div class="info-value" id="acct-username">—</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Email</div>
+          <div class="info-value" id="acct-email">—</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Account ID</div>
+          <div class="info-value mono" id="acct-id" style="font-size:12px;color:var(--sub)">—</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Member Since</div>
+          <div class="info-value" id="acct-since">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Active Subscription ── -->
+  <div class="acct-section">
+    <div class="acct-section-header">
+      <h3>↻ Active Subscription</h3>
+    </div>
+    <div class="acct-section-body">
+
+      <!-- Populated when endpoint exists -->
+      <div id="sub-loaded" class="hidden">
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">Plan</div>
+            <div class="info-value" id="sub-plan-name">—</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Status</div>
+            <div class="info-value" id="sub-status-badge">—</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Price</div>
+            <div class="info-value" id="sub-price">—</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Current Period Ends</div>
+            <div class="info-value" id="sub-period-end">—</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Billing Interval</div>
+            <div class="info-value" id="sub-interval">—</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Trial Ends</div>
+            <div class="info-value" id="sub-trial-end">—</div>
+          </div>
+        </div>
+        <div class="cancel-zone">
+          <p>Cancelling will keep your plan active until the end of the current billing period. You won't be charged again after that.</p>
+          <button class="btn-danger" onclick="cancelSubscription()">Cancel Subscription</button>
+        </div>
+      </div>
+
+      <!-- Placeholder until endpoint is ready -->
+      <div id="sub-pending">
+        <div class="pending-note">
+          <span class="pn-icon">⚠</span>
+          <span>
+            Waiting on backend endpoint — implement <code>GET /api/v1/subscriptions/me</code> (or
+            <code>GET /api/v1/accounts/me/subscription</code>) to surface the current user's active
+            subscription here. A cancel endpoint (<code>PATCH /api/v1/subscriptions/:id/cancel</code>)
+            will also be needed for the cancel button.
+          </span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Payment Methods ── -->
+  <div class="acct-section">
+    <div class="acct-section-header">
+      <h3>◈ Payment Methods</h3>
+      <button class="btn btn-ghost btn-sm" onclick="openPaymentMethodForm()">+ Add Card</button>
+    </div>
+    <div class="acct-section-body">
+
+      <div id="pm-loaded" class="hidden">
+        <div id="pm-list"></div>
+      </div>
+
+      <div id="pm-pending">
+        <div class="pending-note">
+          <span class="pn-icon">⚠</span>
+          <span>
+            Waiting on backend endpoints — implement <code>GET /api/v1/payment-methods</code> to
+            list saved cards, <code>POST /api/v1/payment-methods</code> to add one, and
+            <code>DELETE /api/v1/payment-methods/:id</code> to remove one. The payment method
+            model (<code>internal/payment/model.go</code>) is already defined.
+          </span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Billing History ── -->
+  <div class="acct-section">
+    <div class="acct-section-header">
+      <h3>◫ Billing History</h3>
+    </div>
+    <div class="acct-section-body">
+
+      <div id="billing-loaded" class="hidden">
+        <div id="billing-list"></div>
+      </div>
+
+      <div id="billing-pending">
+        <div class="pending-note">
+          <span class="pn-icon">⚠</span>
+          <span>
+            Waiting on backend endpoint — implement <code>GET /api/v1/invoices</code> (filtered by
+            the authenticated user's account ID) to list invoices here. The individual invoice
+            lookup (<code>GET /api/v1/invoices/:id</code>) is already implemented and will be used
+            to render the "View Invoice" links.
+          </span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════
+     AUTH MODAL
+════════════════════════════════════ -->
+<div class="overlay" id="auth-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="auth-modal-title">Sign in to continue</h2>
+      <p id="auth-modal-sub">You'll be taken to checkout after signing in.</p>
+    </div>
+    <div class="modal-body">
+      <div class="tab-row">
+        <button class="tab-btn active" id="tab-login"    onclick="authTab('login')">Sign In</button>
+        <button class="tab-btn"        id="tab-register" onclick="authTab('register')">Register</button>
+      </div>
+
+      <!-- Login -->
+      <div id="auth-login">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="l-email" placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="l-pass" placeholder="••••••••" />
+        </div>
+        <div id="l-err" class="err-msg hidden"></div>
+      </div>
+
+      <!-- Register -->
+      <div id="auth-register" class="hidden">
+        <div class="field">
+          <label>Username</label>
+          <input type="text" id="r-user" placeholder="johndoe" />
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="r-email" placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label>Password <span class="sub-text" style="text-transform:none;font-weight:400;letter-spacing:0">(min 8 chars)</span></label>
+          <input type="password" id="r-pass" placeholder="••••••••" />
+        </div>
+        <div id="r-err" class="err-msg hidden"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOverlay('auth-overlay')">Cancel</button>
+      <button class="btn btn-primary" id="auth-submit-btn" onclick="authSubmit()">Sign In</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════
+     PAYMENT MODAL
+════════════════════════════════════ -->
+<div class="overlay" id="payment-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Add a payment method</h2>
+      <p>Your card is saved securely and used to process your subscription.</p>
+    </div>
+    <div class="modal-body">
+
+      <!-- Selected plan summary -->
+      <div class="plan-summary" id="pay-plan-summary">
+        <div>
+          <div class="ps-name" id="pay-plan-name">—</div>
+          <div class="ps-int"  id="pay-plan-interval">—</div>
+        </div>
+        <div class="ps-price" id="pay-plan-price">—</div>
+      </div>
+
+      <!-- Accepted cards -->
+      <div class="card-brand-row">
+        <span class="card-chip">Visa</span>
+        <span class="card-chip">Mastercard</span>
+        <span class="card-chip">Amex</span>
+        <span class="card-chip">Discover</span>
+      </div>
+
+      <div class="field">
+        <label>Cardholder Name</label>
+        <input type="text" id="p-name" placeholder="John Doe" autocomplete="cc-name" />
+      </div>
+      <div class="field">
+        <label>Card Number</label>
+        <input type="text" id="p-number" placeholder="1234 5678 9012 3456"
+               maxlength="19" autocomplete="cc-number"
+               oninput="fmtCard(this)" />
+      </div>
+      <div class="three-col">
+        <div class="field">
+          <label>Expiry Month</label>
+          <select id="p-exp-month" autocomplete="cc-exp-month">
+            <option value="">MM</option>
+            <option>01</option><option>02</option><option>03</option>
+            <option>04</option><option>05</option><option>06</option>
+            <option>07</option><option>08</option><option>09</option>
+            <option>10</option><option>11</option><option>12</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Expiry Year</label>
+          <select id="p-exp-year" autocomplete="cc-exp-year">
+            <option value="">YYYY</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>CVV</label>
+          <input type="text" id="p-cvv" placeholder="•••" maxlength="4"
+                 autocomplete="cc-csc"
+                 oninput="this.value=this.value.replace(/\D/g,'')" />
+        </div>
+      </div>
+
+      <div id="p-err" class="err-msg hidden"></div>
+
+      <!-- Placeholder notice -->
+      <div class="placeholder-note">
+        <span class="note-icon">⚠</span>
+        <span>Payment processing endpoint is not yet implemented on the backend. Card details are validated client-side only and will not be charged.</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOverlay('payment-overlay')">Back</button>
+      <button class="btn btn-primary" onclick="submitPayment()">Subscribe →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════
+     SUCCESS SCREEN
+════════════════════════════════════ -->
+<div id="success-screen">
+  <div class="success-card">
+    <div class="success-icon">✓</div>
+    <h2>You're all set!</h2>
+    <p>
+      Your <strong id="suc-plan-name">—</strong> subscription is now active.<br>
+      A confirmation has been sent to <strong id="suc-email">—</strong>.
+    </p>
+    <button class="btn btn-primary" onclick="resetToHome()">Back to Plans</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<!-- ════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════ -->
+<script>
+  /* ── Config ──────────────────────────────────── */
+  const API = 'http://localhost:8080';
+
+  /* ── State ───────────────────────────────────── */
+  let token       = localStorage.getItem('billing_token') || null;
+  let currentUser = JSON.parse(localStorage.getItem('billing_user') || 'null');
+  let selectedPlan = null; // plan the user clicked before auth
+
+  /* ── Bootstrap ───────────────────────────────── */
+  (async () => {
+    populateExpYears();
+    renderNav();
+    await loadPlans();
+
+    // Validate stored token silently
+    if (token) {
+      try {
+        currentUser = await api('GET', '/api/v1/accounts/me');
+        localStorage.setItem('billing_user', JSON.stringify(currentUser));
+        renderNav();
+      } catch (_) {
+        clearSession();
+        renderNav();
+      }
+    }
+  })();
+
+  /* ── API helper ──────────────────────────────── */
+  async function api(method, path, body) {
+    const opts = { method, headers: {} };
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+    if (body) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    const res  = await fetch(API + path, opts);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(data.error || data.message || 'Request failed'), { status: res.status, data });
+    return data;
+  }
+
+  /* ── Formatting ──────────────────────────────── */
+  function fmtMoney(cents, currency) {
+    if (cents == null) return '—';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency', currency: currency || 'USD', minimumFractionDigits: 2,
+    }).format(cents / 100);
+  }
+
+  function fmtInterval(interval) {
+    const map = {
+      daily: 'per day', weekly: 'per week', bi_weekly: 'every 2 weeks',
+      monthly: 'per month', quarterly: 'every 3 months',
+      semi_annual: 'every 6 months', annual: 'per year',
+    };
+    return map[interval] || interval;
+  }
+
+  function fmtCard(input) {
+    let v = input.value.replace(/\D/g, '').slice(0, 16);
+    input.value = v.replace(/(.{4})/g, '$1 ').trim();
+  }
+
+  function populateExpYears() {
+    const sel  = document.getElementById('p-exp-year');
+    const year = new Date().getFullYear();
+    for (let y = year; y <= year + 12; y++) {
+      const opt = document.createElement('option');
+      opt.value = opt.textContent = y;
+      sel.appendChild(opt);
+    }
+  }
+
+  /* ── Nav ─────────────────────────────────────── */
+  function renderNav() {
+    const el = document.getElementById('nav-right');
+    if (currentUser && token) {
+      const initial = (currentUser.username || currentUser.email || '?')[0].toUpperCase();
+      el.innerHTML = `
+        <button class="btn btn-ghost btn-sm" onclick="showAccount()">My Account</button>
+        <div class="user-chip">
+          <div class="avatar">${initial}</div>
+          <span>${currentUser.username || currentUser.email}</span>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="logout()">Sign Out</button>
+      `;
+    } else {
+      el.innerHTML = `
+        <button class="btn btn-outline btn-sm" onclick="openAuthModal(null, 'login')">Sign In</button>
+        <button class="btn btn-primary btn-sm" onclick="openAuthModal(null, 'register')">Get Started</button>
+      `;
+    }
+  }
+
+  /* ── Page navigation ─────────────────────────── */
+  function showAccount() {
+    document.getElementById('landing-page').classList.add('hidden');
+    document.getElementById('account-page').classList.remove('hidden');
+    document.getElementById('footer-el').classList.add('hidden');
+    populateProfile();
+  }
+
+  function showLanding() {
+    document.getElementById('account-page').classList.add('hidden');
+    document.getElementById('landing-page').classList.remove('hidden');
+    document.getElementById('footer-el').classList.remove('hidden');
+  }
+
+  /* ── Account page data ───────────────────────── */
+  function populateProfile() {
+    if (!currentUser) return;
+    document.getElementById('acct-username').textContent = currentUser.username || '—';
+    document.getElementById('acct-email').textContent    = currentUser.email    || '—';
+    document.getElementById('acct-id').textContent       = currentUser.id       || '—';
+    document.getElementById('acct-since').textContent    = currentUser.created_at
+      ? new Date(currentUser.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      : '—';
+
+    // Subscription — placeholder until GET /api/v1/subscriptions/me exists
+    // TODO: fetch user's active subscription and call populateSubscription(data)
+    document.getElementById('sub-pending').classList.remove('hidden');
+    document.getElementById('sub-loaded').classList.add('hidden');
+
+    // Payment methods — placeholder until GET /api/v1/payment-methods exists
+    // TODO: fetch payment methods and call populatePaymentMethods(data)
+    document.getElementById('pm-pending').classList.remove('hidden');
+    document.getElementById('pm-loaded').classList.add('hidden');
+
+    // Billing history — placeholder until GET /api/v1/invoices exists
+    // TODO: fetch user's invoices and call populateBillingHistory(data)
+    document.getElementById('billing-pending').classList.remove('hidden');
+    document.getElementById('billing-loaded').classList.add('hidden');
+  }
+
+  // Called once GET /api/v1/subscriptions/me (or equivalent) is implemented
+  function populateSubscription(sub) {
+    const statusMap = {
+      active: 'badge-green', trial: 'badge-blue',
+      past_due: 'badge-yellow', cancelled: 'badge-red',
+    };
+    document.getElementById('sub-plan-name').textContent  = sub.plan_name || '—';
+    document.getElementById('sub-status-badge').innerHTML = `<span class="badge ${statusMap[sub.status] || 'badge-muted'}">${sub.status}</span>`;
+    document.getElementById('sub-price').textContent      = fmtMoney(sub.plan_price?.amount, sub.plan_price?.currency);
+    document.getElementById('sub-period-end').textContent = sub.current_period_ends_at
+      ? new Date(sub.current_period_ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '—';
+    document.getElementById('sub-interval').textContent   = fmtInterval(sub.subscription_plan_billing_interval || '');
+    document.getElementById('sub-trial-end').textContent  = sub.trial_ends_at
+      ? new Date(sub.trial_ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : 'N/A';
+    document.getElementById('sub-pending').classList.add('hidden');
+    document.getElementById('sub-loaded').classList.remove('hidden');
+  }
+
+  // Called once GET /api/v1/payment-methods is implemented
+  function populatePaymentMethods(methods) {
+    const list = document.getElementById('pm-list');
+    list.innerHTML = methods.map(m => `
+      <div class="pm-card">
+        <div class="pm-left">
+          <div class="pm-brand-chip">${m.brand?.slice(0,4) || '????'}</div>
+          <div class="pm-info">
+            <div class="pm-number">•••• •••• •••• ${m.last_four}</div>
+            <div class="pm-expiry">Expires ${String(m.exp_month).padStart(2,'0')} / ${m.exp_year}</div>
+          </div>
+        </div>
+        ${m.is_default ? '<span class="pm-default">Default</span>' : ''}
+      </div>
+    `).join('');
+    document.getElementById('pm-pending').classList.add('hidden');
+    document.getElementById('pm-loaded').classList.remove('hidden');
+  }
+
+  // Called once GET /api/v1/invoices (user-scoped) is implemented
+  function populateBillingHistory(invoices) {
+    const list = document.getElementById('billing-list');
+    const statusMap = { paid: 'badge-green', open: 'badge-yellow', void: 'badge-muted', uncollectible: 'badge-red' };
+    list.innerHTML = invoices.map(inv => `
+      <div class="inv-row">
+        <div class="inv-left">
+          <div class="inv-plan">${inv.subscription_name || '—'}</div>
+          <div class="inv-date">${inv.created_at ? new Date(inv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</div>
+        </div>
+        <div class="inv-right">
+          <span class="badge ${statusMap[inv.status] || 'badge-muted'}">${inv.status}</span>
+          <span class="inv-amount">${fmtMoney(inv.paid?.amount, inv.paid?.currency)}</span>
+          ${inv.pdf_url ? `<a class="inv-pdf" href="${inv.pdf_url}" target="_blank">PDF</a>` : ''}
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('billing-pending').classList.add('hidden');
+    document.getElementById('billing-loaded').classList.remove('hidden');
+  }
+
+  function cancelSubscription() {
+    // TODO: PATCH /api/v1/subscriptions/:id/cancel
+    // Show confirmation dialog first, then call the endpoint
+    if (!confirm('Are you sure you want to cancel your subscription? It will remain active until the end of the current billing period.')) return;
+    toast('Cancel endpoint not yet implemented on the backend.', 'warn');
+  }
+
+  function openPaymentMethodForm() {
+    // Reuse the payment modal but in "add card only" mode
+    document.getElementById('pay-plan-summary').classList.add('hidden');
+    selectedPlan = null;
+    ['p-name','p-number','p-cvv'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('p-exp-month').value = '';
+    document.getElementById('p-exp-year').value  = '';
+    document.getElementById('p-err').classList.add('hidden');
+    document.getElementById('payment-overlay').classList.add('open');
+  }
+
+  /* ── Load plans ──────────────────────────────── */
+  async function loadPlans() {
+    try {
+      // Plans endpoint is public (no auth required)
+      const data  = await api('GET', '/api/v1/plans/?limit=100&status=active');
+      const plans = data.plans || data.data || (Array.isArray(data) ? data : []);
+
+      const grid = document.getElementById('plans-grid');
+
+      if (!plans.length) {
+        grid.innerHTML = `
+          <div class="plans-message">
+            <div class="icon">◧</div>
+            <p>No active plans available right now.</p>
+          </div>`;
+        return;
+      }
+
+      // Mark the middle plan as "featured" if 3+ plans, else first one
+      const featuredIdx = plans.length >= 3 ? Math.floor(plans.length / 2) : 0;
+
+      grid.innerHTML = plans.map((p, i) => {
+        const featured  = i === featuredIdx;
+        // Handle both `price` (json-tagged) and `Price` (untagged fallback)
+        const priceObj  = p.price ?? p.Price ?? {};
+        const price     = fmtMoney(priceObj.amount, priceObj.currency);
+        const currency  = priceObj.currency || 'USD';
+        const interval  = fmtInterval(p.billing_interval);
+
+        return `
+          <div class="plan-card${featured ? ' featured' : ''}">
+            ${featured ? '<div class="featured-badge">★ Most Popular</div>' : ''}
+            <div class="plan-name">${p.name}</div>
+            <div class="plan-desc">${p.description || 'Access to core features included in this plan.'}</div>
+            <div class="plan-price">
+              <div>
+                <span class="currency">${currency}</span><span class="amount">${fmtMoneyRaw(priceObj.amount)}</span>
+              </div>
+              <div class="interval">${interval}</div>
+            </div>
+            <button
+              class="plan-cta ${featured ? 'plan-cta-featured' : 'plan-cta-default'}"
+              onclick='handlePlanClick(${JSON.stringify(p)})'
+            >
+              ${featured ? 'Get Started →' : 'Choose Plan'}
+            </button>
+          </div>`;
+      }).join('');
+
+    } catch (e) {
+      document.getElementById('plans-grid').innerHTML = `
+        <div class="plans-message">
+          <div class="icon">⚠</div>
+          <p>Could not load plans — make sure the backend is running on <code>localhost:8080</code>.<br><small>${e.message}</small></p>
+        </div>`;
+    }
+  }
+
+  function fmtMoneyRaw(cents) {
+    if (cents == null) return '0.00';
+    return (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  /* ── Plan click ──────────────────────────────── */
+  function handlePlanClick(plan) {
+    selectedPlan = plan;
+    if (token && currentUser) {
+      openPaymentModal(plan);
+    } else {
+      openAuthModal(plan, 'login');
+    }
+  }
+
+  /* ── Auth modal ──────────────────────────────── */
+  function openAuthModal(plan, tab = 'login') {
+    selectedPlan = plan || selectedPlan;
+    authTab(tab);
+    clearErrors();
+    document.getElementById('auth-overlay').classList.add('open');
+  }
+
+  function authTab(tab) {
+    const isLogin = tab === 'login';
+    document.getElementById('auth-login').classList.toggle('hidden', !isLogin);
+    document.getElementById('auth-register').classList.toggle('hidden', isLogin);
+    document.getElementById('tab-login').classList.toggle('active', isLogin);
+    document.getElementById('tab-register').classList.toggle('active', !isLogin);
+    document.getElementById('auth-submit-btn').textContent = isLogin ? 'Sign In' : 'Create Account';
+    document.getElementById('auth-submit-btn').onclick = authSubmit;
+    // store active tab in a data attr for submit handler
+    document.getElementById('auth-overlay').dataset.tab = tab;
+  }
+
+  async function authSubmit() {
+    clearErrors();
+    const tab = document.getElementById('auth-overlay').dataset.tab;
+
+    if (tab === 'login') {
+      const email    = document.getElementById('l-email').value.trim();
+      const password = document.getElementById('l-pass').value;
+      if (!email || !password) return showErr('l-err', 'Email and password are required.');
+      try {
+        const data = await api('POST', '/api/v1/accounts/login', { email, password });
+        token = data.token;
+        localStorage.setItem('billing_token', token);
+        currentUser = await api('GET', '/api/v1/accounts/me');
+        localStorage.setItem('billing_user', JSON.stringify(currentUser));
+        closeOverlay('auth-overlay');
+        renderNav();
+        toast('Welcome back, ' + (currentUser.username || currentUser.email) + '!');
+        if (selectedPlan) openPaymentModal(selectedPlan);
+      } catch (e) {
+        showErr('l-err', e.message);
+      }
+    } else {
+      const username = document.getElementById('r-user').value.trim();
+      const email    = document.getElementById('r-email').value.trim();
+      const password = document.getElementById('r-pass').value;
+      if (!username || !email || !password) return showErr('r-err', 'All fields are required.');
+      if (password.length < 8) return showErr('r-err', 'Password must be at least 8 characters.');
+      try {
+        await api('POST', '/api/v1/accounts/register', { username, email, password });
+        // Auto-login after register
+        const data = await api('POST', '/api/v1/accounts/login', { email, password });
+        token = data.token;
+        localStorage.setItem('billing_token', token);
+        currentUser = await api('GET', '/api/v1/accounts/me');
+        localStorage.setItem('billing_user', JSON.stringify(currentUser));
+        closeOverlay('auth-overlay');
+        renderNav();
+        toast('Account created — welcome, ' + username + '!');
+        if (selectedPlan) openPaymentModal(selectedPlan);
+      } catch (e) {
+        showErr('r-err', e.message);
+      }
+    }
+  }
+
+  /* ── Payment modal ───────────────────────────── */
+  function openPaymentModal(plan) {
+    selectedPlan = plan;
+
+    // Restore plan summary strip (may have been hidden by "add card" flow)
+    document.getElementById('pay-plan-summary').classList.remove('hidden');
+
+    // Populate plan summary
+    document.getElementById('pay-plan-name').textContent     = plan.name;
+    document.getElementById('pay-plan-interval').textContent = fmtInterval(plan.billing_interval);
+    const pp = plan.price ?? plan.Price ?? {};
+    document.getElementById('pay-plan-price').textContent    = fmtMoney(pp.amount, pp.currency);
+
+    // Clear fields
+    ['p-name','p-number','p-cvv'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('p-exp-month').value = '';
+    document.getElementById('p-exp-year').value  = '';
+    document.getElementById('p-err').classList.add('hidden');
+
+    document.getElementById('payment-overlay').classList.add('open');
+  }
+
+  function submitPayment() {
+    // Client-side validation
+    const name    = document.getElementById('p-name').value.trim();
+    const number  = document.getElementById('p-number').value.replace(/\s/g, '');
+    const month   = document.getElementById('p-exp-month').value;
+    const year    = document.getElementById('p-exp-year').value;
+    const cvv     = document.getElementById('p-cvv').value;
+
+    if (!name)                   return showErr('p-err', 'Cardholder name is required.');
+    if (number.length < 15)      return showErr('p-err', 'Please enter a valid card number.');
+    if (!month || !year)         return showErr('p-err', 'Please select an expiry date.');
+    if (cvv.length < 3)          return showErr('p-err', 'CVV must be 3–4 digits.');
+
+    // TODO: POST /api/v1/payment-methods  (endpoint not yet implemented)
+    // Payload will be:
+    // {
+    //   external_id: <tokenised card ID from payment processor>,
+    //   brand:       detectBrand(number),
+    //   last_four:   number.slice(-4),
+    //   exp_month:   parseInt(month),
+    //   exp_year:    parseInt(year),
+    //   is_default:  true
+    // }
+    // Then POST /api/v1/subscriptions/create with { plan_id: selectedPlan.id }
+
+    closeOverlay('payment-overlay');
+    showSuccess();
+  }
+
+  function detectBrand(num) {
+    if (/^4/.test(num))          return 'Visa';
+    if (/^5[1-5]/.test(num))     return 'Mastercard';
+    if (/^3[47]/.test(num))      return 'Amex';
+    if (/^6(?:011|5)/.test(num)) return 'Discover';
+    return 'Unknown';
+  }
+
+  /* ── Success ─────────────────────────────────── */
+  function showSuccess() {
+    document.getElementById('suc-plan-name').textContent = selectedPlan?.name || '—';
+    document.getElementById('suc-email').textContent     = currentUser?.email || '—';
+    document.getElementById('success-screen').classList.add('open');
+  }
+
+  function resetToHome() {
+    document.getElementById('success-screen').classList.remove('open');
+    selectedPlan = null;
+  }
+
+  /* ── Auth helpers ────────────────────────────── */
+  function logout() {
+    clearSession();
+    renderNav();
+    toast('Signed out.');
+  }
+
+  function clearSession() {
+    token = null; currentUser = null;
+    localStorage.removeItem('billing_token');
+    localStorage.removeItem('billing_user');
+  }
+
+  /* ── Modal helpers ───────────────────────────── */
+  function closeOverlay(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+
+  // Close on backdrop click
+  document.querySelectorAll('.overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+  });
+
+  // Enter key on auth inputs
+  ['l-email','l-pass','r-user','r-email','r-pass'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') authSubmit(); });
+  });
+
+  function showErr(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.classList.remove('hidden');
+  }
+
+  function clearErrors() {
+    ['l-err','r-err','p-err'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  }
+
+  /* ── Toast ───────────────────────────────────── */
+  function toast(msg, type = 'ok') {
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.textContent = msg;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 3200);
+  }
+</script>
+</body>
+</html>
