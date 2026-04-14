@@ -23,7 +23,7 @@ func RequireAuth() gin.HandlerFunc {
 
 		// split the header by space (with max 2 parts) to get the token part. The expected format is "Bearer <token>"
 		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || parts[0] != "bearer" {
+		if len(parts) != 2 || parts[0] != "Bearer" {
 			ginContext.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization header must be in the format: Bearer <token>"})
 			return
 		}

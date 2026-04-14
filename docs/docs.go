@@ -266,6 +266,66 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/invoices/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invoices"
+                ],
+                "summary": "Get an invoice by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Invoice ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/invoice.InvoiceReadModel"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/plans": {
             "get": {
                 "produces": [
@@ -390,7 +450,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/plans/update/status/{id}": {
+        "/api/v1/plans/deprecate/{id}": {
             "patch": {
                 "consumes": [
                     "application/json"
@@ -401,7 +461,7 @@ const docTemplate = `{
                 "tags": [
                     "plans"
                 ],
-                "summary": "Update a plan's status",
+                "summary": "Deprecate a subscription plan by ID",
                 "parameters": [
                     {
                         "type": "integer",
@@ -409,15 +469,6 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "Update plan status request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/plans.UpdatePlanStatusRequest"
-                        }
                     }
                 ],
                 "responses": {
@@ -590,6 +641,66 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/subscriptions/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscriptions"
+                ],
+                "summary": "Get a subscription by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Subscription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/subscription.SubscriptionsReadModel"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -652,6 +763,65 @@ const docTemplate = `{
                 }
             }
         },
+        "invoice.InvoiceReadModel": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "paid": {
+                    "$ref": "#/definitions/money.Money"
+                },
+                "pdf_url": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/invoice.Status"
+                },
+                "subscription_name": {
+                    "type": "string"
+                },
+                "subscription_price": {
+                    "$ref": "#/definitions/money.Money"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_email": {
+                    "type": "string"
+                }
+            }
+        },
+        "invoice.Status": {
+            "type": "string",
+            "enum": [
+                "paid",
+                "open",
+                "void",
+                "uncollectible"
+            ],
+            "x-enum-varnames": [
+                "InvoiceStatusPaid",
+                "InvoiceStatusOpen",
+                "InvoiceStatusVoid",
+                "InvoiceStatusUncollectible"
+            ]
+        },
+        "money.Money": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "description": "Amount in cents",
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string"
+                }
+            }
+        },
         "plans.BillingInterval": {
             "type": "string",
             "enum": [
@@ -676,24 +846,20 @@ const docTemplate = `{
         "plans.CreatePlanRequest": {
             "type": "object",
             "required": [
-                "amount",
                 "billing_interval",
-                "currency",
                 "description",
+                "money",
                 "name"
             ],
             "properties": {
-                "amount": {
-                    "type": "integer"
-                },
                 "billing_interval": {
                     "$ref": "#/definitions/plans.BillingInterval"
                 },
-                "currency": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
+                },
+                "money": {
+                    "$ref": "#/definitions/money.Money"
                 },
                 "name": {
                     "type": "string"
@@ -714,16 +880,10 @@ const docTemplate = `{
         "plans.SubscriptionPlans": {
             "type": "object",
             "properties": {
-                "amount": {
-                    "type": "integer"
-                },
                 "billing_interval": {
                     "$ref": "#/definitions/plans.BillingInterval"
                 },
                 "created_at": {
-                    "type": "string"
-                },
-                "currency": {
                     "type": "string"
                 },
                 "description": {
@@ -734,6 +894,9 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "price": {
+                    "$ref": "#/definitions/money.Money"
                 },
                 "status": {
                     "$ref": "#/definitions/plans.PlanStatus"
@@ -746,30 +909,83 @@ const docTemplate = `{
         "plans.UpdatePlanRequest": {
             "type": "object",
             "properties": {
-                "amount": {
-                    "type": "integer"
-                },
                 "billing_interval": {
                     "$ref": "#/definitions/plans.BillingInterval"
                 },
-                "currency": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
+                },
+                "money": {
+                    "$ref": "#/definitions/money.Money"
                 },
                 "name": {
                     "type": "string"
                 }
             }
         },
-        "plans.UpdatePlanStatusRequest": {
+        "subscription.Status": {
+            "type": "string",
+            "enum": [
+                "trial",
+                "active",
+                "past_due",
+                "cancelled"
+            ],
+            "x-enum-varnames": [
+                "SubscriptionStatusTrial",
+                "SubscriptionStatusActive",
+                "SubscriptionStatusPastDue",
+                "SubscriptionStatusCancelled"
+            ]
+        },
+        "subscription.SubscriptionsReadModel": {
             "type": "object",
             "properties": {
+                "cancel_at_period_end": {
+                    "type": "boolean"
+                },
+                "cancelled_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "current_period_ends_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "plan_name": {
+                    "type": "string"
+                },
+                "plan_price": {
+                    "$ref": "#/definitions/money.Money"
+                },
                 "status": {
-                    "$ref": "#/definitions/plans.PlanStatus"
+                    "$ref": "#/definitions/subscription.Status"
+                },
+                "subscription_plan_billing_interval": {
+                    "$ref": "#/definitions/plans.BillingInterval"
+                },
+                "trial_ends_at": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_account_email": {
+                    "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Type \"Bearer\" followed by a space and your JWT token",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`

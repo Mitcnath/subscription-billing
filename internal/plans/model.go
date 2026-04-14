@@ -1,6 +1,10 @@
 package plans
 
-import "time"
+import (
+	"billingService/backend/internal/money"
+	"fmt"
+	"time"
+)
 
 type BillingInterval string
 
@@ -49,8 +53,7 @@ type Base struct {
 type SubscriptionPlans struct {
 	Base
 	Name            string          `gorm:"column:name;type:varchar;not null;unique" json:"name"`
-	Amount          uint64          `gorm:"column:amount;type:bigint;not null;check:amount>0" json:"amount"`
-	Currency        string          `gorm:"column:currency;type:varchar;not null" json:"currency"`
+	Price           money.Money     `gorm:"embedded" json:"price"`
 	Description     string          `gorm:"column:description;type:text;not null;default:''" json:"description"`
 	BillingInterval BillingInterval `gorm:"column:billing_interval;type:billing_interval;not null" json:"billing_interval"`
 	Status          PlanStatus      `gorm:"column:status;type:plan_status;not null;default:'active'" json:"status"`
@@ -58,4 +61,17 @@ type SubscriptionPlans struct {
 
 func (SubscriptionPlans) TableName() string {
 	return "subscription_plans"
+}
+
+func (subscriptionPlans *SubscriptionPlans) CanBeDeprecated() bool {
+	// Can only be deprecated if currently 'active'
+	return subscriptionPlans.Status == PlanStatusActive
+}
+
+func (subscriptionPlans *SubscriptionPlans) Deprecate() error {
+	if !subscriptionPlans.CanBeDeprecated() {
+		return fmt.Errorf("plan with id %d cannot be deprecated with status: %s", subscriptionPlans.ID, subscriptionPlans.Status)
+	}
+	subscriptionPlans.Status = PlanStatusDeprecated
+	return nil
 }

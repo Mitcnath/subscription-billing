@@ -12,7 +12,7 @@ type Base struct {
 	UpdatedAt time.Time `gorm:"column:updated_at;type:timestamptz;not null" json:"updated_at"`
 }
 
-type PaymentMethod struct {
+type Method struct {
 	Base
 	UserAccountID uuid.UUID `gorm:"column:user_account_id;type:uuid;not null" json:"user_account_id"`
 	ExternalID    string    `gorm:"column:external_id;type:varchar;not null" json:"external_id"`
@@ -23,6 +23,6 @@ type PaymentMethod struct {
 	IsDefault     bool      `gorm:"column:is_default;type:boolean;not null;default:false" json:"is_default"`
 }
 
-func (PaymentMethod) TableName() string {
+func (Method) TableName() string {
 	return "payment_methods"
 }

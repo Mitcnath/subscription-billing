@@ -23,3 +23,14 @@ type UserAccounts struct {
 func (UserAccounts) TableName() string {
 	return "user_accounts"
 }
+
+// UserAccountReadModel is a read-only representation of the UserAccounts model, excluding sensitive fields like PasswordHash.
+type UserAccountsReadModel struct {
+	Base
+	Email    string `gorm:"column:email;type:varchar;not null;unique" json:"email"`
+	Username string `gorm:"column:username;type:varchar;not null" json:"username"`
+}
+
+func (UserAccountsReadModel) TableName() string {
+	return "user_accounts"
+}

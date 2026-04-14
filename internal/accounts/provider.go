@@ -1,28 +1,26 @@
 package accounts
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
-	"os"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
 type Provider struct {
-	accountsRepository AccountsRepository
+	accountsRepository Repository
 }
 
-func NewProvider(accountsRepository AccountsRepository) *Provider {
+func NewProvider(accountsRepository Repository) *Provider {
 	return &Provider{accountsRepository: accountsRepository}
 }
 
 // TODO: Either remove this endpoint or add admin authorization to it
 
-// GetAccounts godoc
+// GetAccounts godoc.
 // @Summary      List user accounts
 // @Tags         accounts
 // @Produce      json
@@ -71,14 +69,7 @@ func (provider *Provider) GetAccounts(ginContext *gin.Context) {
 	})
 }
 
-// RegisterRequest defines the request body for creating a user account.
-type RegisterRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required,min=8"` // Minimum 8 characters for basic password strength
-}
-
-// Register godoc
+// Register godoc.
 // @Summary      Register a new user account
 // @Tags         accounts
 // @Accept       json
@@ -97,36 +88,18 @@ func (provider *Provider) Register(ginContext *gin.Context) {
 		return
 	}
 
-	// Check if email already exists
-	_, err := provider.accountsRepository.FindByEmail(registerRequest.Email)
-	if err == nil {
-		ginContext.JSON(http.StatusConflict, gin.H{"error": "email already in use"})
-		return
-	}
+	userAccount, err := NewUserAccountService(provider.accountsRepository).Register(registerRequest)
 
-	// Check if username already exists
-	_, err = provider.accountsRepository.FindByUsername(registerRequest.Username)
-	if err == nil {
-		ginContext.JSON(http.StatusConflict, gin.H{"error": "username already in use"})
-		return
-	}
-
-	hashedPassword, err := hashPassword(registerRequest.Password)
 	if err != nil {
-		slog.Error("failed to hash password", "error", err)
-		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": "an unexpected error occurred"})
-		return
-	}
-
-	userAccount := UserAccounts{
-		Email:        registerRequest.Email,
-		Username:     registerRequest.Username,
-		PasswordHash: hashedPassword,
-	}
-
-	if err := provider.accountsRepository.Create(&userAccount); err != nil {
-		slog.Error("failed to create user account", "error", err)
-		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": "an unexpected error occurred"})
+		if errors.Is(err, EmailAlreadyTakenErr) {
+			ginContext.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, UsernameAlreadyTakenErr) {
+			ginContext.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": UnexpectedErr})
 		return
 	}
 
@@ -139,7 +112,7 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-// Login godoc
+// Login godoc.
 // @Summary      Authenticate a user and return a JWT
 // @Tags         accounts
 // @Accept       json
@@ -158,45 +131,27 @@ func (provider *Provider) Login(ginContext *gin.Context) {
 		return
 	}
 
-	userAccount, err := provider.accountsRepository.FindByEmail(loginRequest.Email)
+	signed, err := NewUserAccountService(provider.accountsRepository).Login(loginRequest.Email, loginRequest.Password)
+
 	if err != nil {
-		ginContext.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
-		return
-	}
+		if errors.Is(err, EmailNotFoundErr) {
+			ginContext.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 
-	match, err := verifyPassword(loginRequest.Password, userAccount.PasswordHash)
-	if err != nil {
-		slog.Error("failed to verify password", "error", err)
-		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": "an unexpected error occurred"})
-		return
-	}
+		if errors.Is(err, InvalidEmailOrPasswordErr) {
+			ginContext.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 
-	if !match {
-		ginContext.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
-		return
-	}
-
-	// Create JWT token
-	claims := jwt.RegisteredClaims{
-		Subject:   userAccount.ID.String(),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)), // Token valid for 1 hour
-	}
-
-	// Create the token using the claims and sign it with the secret key
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	signed, err := token.SignedString([]byte(os.Getenv("JWT_SECRET_KEY")))
-	if err != nil {
-		slog.Error("failed to sign token", "error", err)
-		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": "an unexpected error occurred"})
+		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	ginContext.JSON(http.StatusOK, gin.H{"token": signed})
 }
 
-// GetMe godoc
+// GetMe godoc.
 // @Summary      Get the authenticated user's account
 // @Tags         accounts
 // @Produce      json
@@ -215,7 +170,7 @@ func (provider *Provider) GetMe(ginContext *gin.Context) {
 		return
 	}
 
-	userAccount, err := provider.accountsRepository.FindByID(userID)
+	userAccount, err := provider.accountsRepository.FindReadModelByID(userID)
 	if err != nil {
 		slog.Error("failed to fetch user account", "error", err)
 		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": "an unexpected error occurred"})

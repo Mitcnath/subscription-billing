@@ -1,6 +1,7 @@
 package plans
 
 import (
+	"billingService/backend/internal/money"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -12,11 +13,11 @@ import (
 
 // Provider struct is essentially a java class with only fields
 type Provider struct {
-	plansRepository PlansRepository
+	plansRepository Repository
 }
 
 // Constructor
-func NewProvider(plansRepository PlansRepository) *Provider {
+func NewProvider(plansRepository Repository) *Provider {
 	return &Provider{plansRepository: plansRepository}
 }
 
@@ -30,7 +31,7 @@ func NewProvider(plansRepository PlansRepository) *Provider {
 // @Failure      404  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /api/v1/plans/{id} [get]
-func (provider *Provider) GetPlanById(ginContext *gin.Context) {
+func (provider *Provider) GetPlanByID(ginContext *gin.Context) {
 	id, err := strconv.ParseInt(ginContext.Param("id"), 10, 16)
 
 	if err != nil {
@@ -116,15 +117,6 @@ func (provider *Provider) GetPlans(ginContext *gin.Context) {
 	})
 }
 
-// CreatePlanRequest defines the request body for creating a subscription plan.
-type CreatePlanRequest struct {
-	Name            string          `json:"name" binding:"required"`
-	Description     string          `json:"description" binding:"required"`
-	Amount          uint64          `json:"amount" binding:"required,gt=0"`
-	Currency        string          `json:"currency" binding:"required,iso4217"`
-	BillingInterval BillingInterval `json:"billing_interval" binding:"required"`
-}
-
 // CreatePlan godoc
 // @Summary      Create a subscription plan
 // @Tags         plans
@@ -146,29 +138,10 @@ func (provider *Provider) CreatePlan(ginContext *gin.Context) {
 		return
 	}
 
-	if !subscriptionPlanRequest.BillingInterval.Valid() {
-		ginContext.JSON(http.StatusBadRequest, gin.H{"error": "billing interval does not exist. Must be one of the following: \"daily\", \"weekly\", \"bi_weekly\", \"monthly\", \"quarterly\", \"semi_annual\", \"annual\""})
-		return
-	}
+	plan, err := NewPlansService(provider.plansRepository).CreatePlan(subscriptionPlanRequest)
 
-	plan := SubscriptionPlans{
-		Name:            subscriptionPlanRequest.Name,
-		Description:     subscriptionPlanRequest.Description,
-		Amount:          subscriptionPlanRequest.Amount,
-		Currency:        subscriptionPlanRequest.Currency,
-		BillingInterval: subscriptionPlanRequest.BillingInterval,
-	}
-
-	if err := provider.plansRepository.Create(&plan); err != nil {
-		// Name has a unique constraint at db level so check that using gorm
-		// https://pkg.go.dev/errors
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			ginContext.JSON(http.StatusConflict, gin.H{"error": "a plan with this name already exists"})
-			return
-		}
-		// Structured logging: https://pkg.go.dev/log/slog
-		slog.Error("failed to create plan", "error", err)
-		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": "an unexpected error occurred"})
+	if err != nil {
+		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -179,8 +152,7 @@ func (provider *Provider) CreatePlan(ginContext *gin.Context) {
 type UpdatePlanRequest struct {
 	Name            *string          `json:"name"`
 	Description     *string          `json:"description"`
-	Amount          *uint64          `json:"amount" binding:"omitempty,gt=0"`
-	Currency        *string          `json:"currency" binding:"omitempty,iso4217"`
+	Money           *money.Money     `json:"money"`
 	BillingInterval *BillingInterval `json:"billing_interval"`
 }
 
@@ -197,7 +169,7 @@ type UpdatePlanRequest struct {
 // @Failure      409      {object}  map[string]string
 // @Failure      500      {object}  map[string]string
 // @Router       /api/v1/plans/update/{id} [patch]
-func (provider *Provider) UpdatePlanById(ginContext *gin.Context) {
+func (provider *Provider) UpdatePlanByID(ginContext *gin.Context) {
 
 	id, err := strconv.ParseInt(ginContext.Param("id"), 10, 16)
 
@@ -214,60 +186,33 @@ func (provider *Provider) UpdatePlanById(ginContext *gin.Context) {
 		return
 	}
 
-	if (subscriptionPlanRequest == UpdatePlanRequest{}) {
-		ginContext.JSON(http.StatusBadRequest, gin.H{"error": "at least one field must be provided to update"})
-		return
-	}
+	slog.Info("parsed body", "name", subscriptionPlanRequest.Name, "interval", subscriptionPlanRequest.BillingInterval)
 
-	if subscriptionPlanRequest.BillingInterval != nil && !subscriptionPlanRequest.BillingInterval.Valid() {
-		ginContext.JSON(http.StatusBadRequest, gin.H{"error": "billing interval does not exist. Must be one of the following: \"daily\", \"weekly\", \"bi_weekly\", \"monthly\", \"quarterly\", \"semi_annual\", \"annual\""})
-		return
-	}
-
-	result, err := provider.plansRepository.FindByID(int16(id))
+	result, err := NewPlansService(provider.plansRepository).UpdatePlan(subscriptionPlanRequest, int16(id))
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ginContext.JSON(http.StatusNotFound, gin.H{"error": "plan not found"})
+		if errors.Is(err, ErrNoChangesMade) || errors.Is(err, InvalidMoneyErr) || errors.Is(err, InvalidBillingIntervalErr) || errors.Is(err, ErrCannotBeDeprecated) {
+			ginContext.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		slog.Error("failed to fetch plan", "error", err)
-		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": "an unexpected error occurred"})
-		return
-	}
-
-	if result.Status == PlanStatusDeprecated {
-		ginContext.JSON(http.StatusConflict, gin.H{"error": "cannot update a deprecated plan. Please change the plan status to active before updating"})
-		return
-	}
-
-	if err := provider.plansRepository.Update(result, subscriptionPlanRequest); err != nil {
-		slog.Error("failed to update plan", "error", err)
-		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": "an unexpected error occurred"})
-		return
+		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
 	ginContext.JSON(http.StatusOK, result)
 }
 
-// UpdatePlanStatusRequest defines the request body for updating a plan's status.
-type UpdatePlanStatusRequest struct {
-	Status PlanStatus `json:"status"`
-}
-
-// UpdatePlanStatusById godoc
-// @Summary      Update a plan's status
+// DeprecatePlanByID godoc
+// @Summary      Deprecate a subscription plan by ID
 // @Tags         plans
 // @Accept       json
 // @Produce      json
 // @Param        id       path      int                      true  "Plan ID"
-// @Param        request  body      UpdatePlanStatusRequest  true  "Update plan status request"
 // @Success      200      {object}  SubscriptionPlans
 // @Failure      400      {object}  map[string]string
 // @Failure      404      {object}  map[string]string
 // @Failure      500      {object}  map[string]string
-// @Router       /api/v1/plans/update/status/{id} [patch]
-func (provider *Provider) UpdatePlanStatusById(ginContext *gin.Context) {
+// @Router       /api/v1/plans/deprecate/{id} [patch]
+func (provider *Provider) DeprecatePlanByID(ginContext *gin.Context) {
 
 	id, err := strconv.ParseInt(ginContext.Param("id"), 10, 16)
 
@@ -276,36 +221,16 @@ func (provider *Provider) UpdatePlanStatusById(ginContext *gin.Context) {
 		return
 	}
 
-	var subscriptionPlanRequest UpdatePlanStatusRequest
-
-	if err := ginContext.ShouldBindJSON(&subscriptionPlanRequest); err != nil {
-		ginContext.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if !subscriptionPlanRequest.Status.Valid() {
-		ginContext.JSON(http.StatusBadRequest, gin.H{"error": "status does not exist. Must be one of the following: \"active\", \"deprecated\""})
-		return
-	}
-
-	result, err := provider.plansRepository.FindByID(int16(id))
+	deprecatedPlan, err := NewPlansService(provider.plansRepository).DeprecatePlanByID(int16(id))
 
 	if err != nil {
-
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ginContext.JSON(http.StatusNotFound, gin.H{"error": "plan not found"})
+		if errors.Is(err, ErrCannotBeDeprecated) {
+			ginContext.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		slog.Error("failed to fetch plan", "error", err)
-		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": "an unexpected error occurred"})
+		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := provider.plansRepository.UpdateStatus(result, subscriptionPlanRequest); err != nil {
-		slog.Error("failed to update plan", "error", err)
-		ginContext.JSON(http.StatusInternalServerError, gin.H{"error": "an unexpected error occurred"})
-		return
-	}
-
-	ginContext.JSON(http.StatusOK, result)
+	ginContext.JSON(http.StatusOK, deprecatedPlan)
 }

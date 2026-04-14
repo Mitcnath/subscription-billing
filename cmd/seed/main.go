@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
@@ -12,9 +13,11 @@ import (
 	"gorm.io/gorm"
 
 	"billingService/backend/internal/accounts"
+	"billingService/backend/internal/invoice"
+	"billingService/backend/internal/money"
 	"billingService/backend/internal/payment"
 	"billingService/backend/internal/plans"
-	"billingService/backend/internal/statuses"
+	"billingService/backend/internal/subscription"
 )
 
 func main() {
@@ -29,7 +32,7 @@ func main() {
 	}
 
 	// Truncate all tables in reverse FK dependency order before seeding
-	if err := db.Exec("TRUNCATE billing_histories, subscriptions, payment_methods, user_accounts, subscription_plans RESTART IDENTITY CASCADE").Error; err != nil {
+	if err := db.Exec("TRUNCATE invoices, subscriptions, payment_methods, user_accounts, subscription_plans RESTART IDENTITY CASCADE").Error; err != nil {
 		log.Fatal("failed to truncate tables: ", err)
 	}
 	slog.Info("Truncated all tables")
@@ -55,29 +58,25 @@ func main() {
 		{
 			Name:            "Starter",
 			Description:     "Basic plan for individuals and hobbyists",
-			Amount:          999,
-			Currency:        "CAD",
+			Price:           money.Money{Amount: 999, Currency: "CAD"},
 			BillingInterval: plans.BillingIntervalMonthly,
 		},
 		{
 			Name:            "Pro",
 			Description:     "Advanced features for professionals",
-			Amount:          2999,
-			Currency:        "CAD",
+			Price:           money.Money{Amount: 2999, Currency: "CAD"},
 			BillingInterval: plans.BillingIntervalMonthly,
 		},
 		{
 			Name:            "Business",
 			Description:     "Team-oriented plan with priority support",
-			Amount:          9999,
-			Currency:        "CAD",
+			Price:           money.Money{Amount: 9999, Currency: "CAD"},
 			BillingInterval: plans.BillingIntervalQuarterly,
 		},
 		{
 			Name:            "Enterprise",
 			Description:     "Full-featured plan for large organizations",
-			Amount:          29999,
-			Currency:        "CAD",
+			Price:           money.Money{Amount: 29999, Currency: "CAD"},
 			BillingInterval: plans.BillingIntervalAnnual,
 		},
 	}
@@ -130,7 +129,7 @@ func main() {
 	type subConfig struct {
 		userIdx           int
 		planIdx           int
-		status            statuses.SubscriptionStatus
+		status            subscription.Status
 		trialEndsAt       *time.Time
 		currentPeriodEnds time.Time
 		cancelAtPeriodEnd bool
@@ -139,33 +138,35 @@ func main() {
 
 	configs := []subConfig{
 		// Trial (4) — trialEndsAt is set to a future date
-		{0, 0, statuses.SubscriptionStatusTrial, &trialEnd, monthEnd, false, nil},
-		{1, 1, statuses.SubscriptionStatusTrial, &trialEnd, monthEnd, false, nil},
-		{2, 0, statuses.SubscriptionStatusTrial, &trialEnd, monthEnd, false, nil},
-		{3, 2, statuses.SubscriptionStatusTrial, &trialEnd, quarterEnd, false, nil},
+		{0, 0, subscription.SubscriptionStatusTrial, &trialEnd, monthEnd, false, nil},
+		{1, 1, subscription.SubscriptionStatusTrial, &trialEnd, monthEnd, false, nil},
+		{2, 0, subscription.SubscriptionStatusTrial, &trialEnd, monthEnd, false, nil},
+		{3, 2, subscription.SubscriptionStatusTrial, &trialEnd, quarterEnd, false, nil},
 		// Active (10) — trial has already ended, trialEndsAt is nil
-		{4, 0, statuses.SubscriptionStatusActive, nil, monthEnd, false, nil},
-		{5, 1, statuses.SubscriptionStatusActive, nil, monthEnd, false, nil},
-		{6, 2, statuses.SubscriptionStatusActive, nil, quarterEnd, false, nil},
-		{7, 3, statuses.SubscriptionStatusActive, nil, yearEnd, false, nil},
-		{8, 1, statuses.SubscriptionStatusActive, nil, monthEnd, false, nil},
-		{9, 0, statuses.SubscriptionStatusActive, nil, monthEnd, true, nil},
-		{10, 2, statuses.SubscriptionStatusActive, nil, quarterEnd, false, nil},
-		{11, 3, statuses.SubscriptionStatusActive, nil, yearEnd, false, nil},
-		{12, 1, statuses.SubscriptionStatusActive, nil, monthEnd, false, nil},
-		{13, 0, statuses.SubscriptionStatusActive, nil, monthEnd, true, nil},
+		{4, 0, subscription.SubscriptionStatusActive, nil, monthEnd, false, nil},
+		{5, 1, subscription.SubscriptionStatusActive, nil, monthEnd, false, nil},
+		{6, 2, subscription.SubscriptionStatusActive, nil, quarterEnd, false, nil},
+		{7, 3, subscription.SubscriptionStatusActive, nil, yearEnd, false, nil},
+		{8, 1, subscription.SubscriptionStatusActive, nil, monthEnd, false, nil},
+		{9, 0, subscription.SubscriptionStatusActive, nil, monthEnd, true, nil},
+		{10, 2, subscription.SubscriptionStatusActive, nil, quarterEnd, false, nil},
+		{11, 3, subscription.SubscriptionStatusActive, nil, yearEnd, false, nil},
+		{12, 1, subscription.SubscriptionStatusActive, nil, monthEnd, false, nil},
+		{13, 0, subscription.SubscriptionStatusActive, nil, monthEnd, true, nil},
 		// Past Due (3)
-		{14, 0, statuses.SubscriptionStatusPastDue, nil, pastPeriodEnd, false, nil},
-		{15, 1, statuses.SubscriptionStatusPastDue, nil, pastPeriodEnd, false, nil},
-		{16, 2, statuses.SubscriptionStatusPastDue, nil, pastPeriodEnd, false, nil},
+		{14, 0, subscription.SubscriptionStatusPastDue, nil, pastPeriodEnd, false, nil},
+		{15, 1, subscription.SubscriptionStatusPastDue, nil, pastPeriodEnd, false, nil},
+		{16, 2, subscription.SubscriptionStatusPastDue, nil, pastPeriodEnd, false, nil},
 		// Cancelled (3)
-		{17, 0, statuses.SubscriptionStatusCanceled, nil, pastPeriodEnd, true, &cancelledAt},
-		{18, 1, statuses.SubscriptionStatusCanceled, nil, pastPeriodEnd, true, &cancelledAt},
-		{19, 3, statuses.SubscriptionStatusCanceled, nil, yearEnd, true, &cancelledAt},
+		{17, 0, subscription.SubscriptionStatusCancelled, nil, pastPeriodEnd, true, &cancelledAt},
+		{18, 1, subscription.SubscriptionStatusCancelled, nil, pastPeriodEnd, true, &cancelledAt},
+		{19, 3, subscription.SubscriptionStatusCancelled, nil, yearEnd, true, &cancelledAt},
 	}
 
+	seedSubs := make([]subscription.Subscriptions, 0, len(configs))
+
 	for _, cfg := range configs {
-		sub := statuses.Subscriptions{
+		sub := subscription.Subscriptions{
 			UserAccountID:       seedUsers[cfg.userIdx].ID,
 			SubscriptionPlanID:  seedPlans[cfg.planIdx].ID,
 			Status:              cfg.status,
@@ -185,6 +186,7 @@ func main() {
 			"plan", seedPlans[cfg.planIdx].Name,
 			"status", sub.Status,
 		)
+		seedSubs = append(seedSubs, sub)
 	}
 
 	// --- Seed Payment Methods ---
@@ -223,7 +225,7 @@ func main() {
 	}
 
 	for _, cfg := range pmConfigs {
-		pm := payment.PaymentMethod{
+		pm := payment.Method{
 			UserAccountID: seedUsers[cfg.userIdx].ID,
 			ExternalID:    cfg.externalID,
 			Brand:         cfg.brand,
@@ -242,6 +244,65 @@ func main() {
 			"user", seedUsers[cfg.userIdx].Username,
 			"brand", pm.Brand,
 			"last_four", pm.LastFour,
+		)
+	}
+
+	// --- Seed Invoices ---
+	// Strategy per subscription status:
+	//   trial       — no invoice; billing has not yet started
+	//   active      — one paid invoice representing the last completed billing cycle
+	//   past_due    — one open invoice representing the failed payment
+	//   cancelled   — one paid invoice representing the final successful charge
+	slog.Info("Seeding invoices...")
+
+	type invoiceConfig struct {
+		subIdx  int // index into seedSubs
+		planIdx int // index into seedPlans (to derive amount/currency)
+		status  invoice.Status
+	}
+
+	invoiceConfigs := []invoiceConfig{
+		// active subs — seedSubs indices 4-13 map to configs indices 4-13
+		{4, 0, invoice.InvoiceStatusPaid},
+		{5, 1, invoice.InvoiceStatusPaid},
+		{6, 2, invoice.InvoiceStatusPaid},
+		{7, 3, invoice.InvoiceStatusPaid},
+		{8, 1, invoice.InvoiceStatusPaid},
+		{9, 0, invoice.InvoiceStatusPaid},
+		{10, 2, invoice.InvoiceStatusPaid},
+		{11, 3, invoice.InvoiceStatusPaid},
+		{12, 1, invoice.InvoiceStatusPaid},
+		{13, 0, invoice.InvoiceStatusPaid},
+		// past_due subs — seedSubs indices 14-16
+		{14, 0, invoice.InvoiceStatusOpen},
+		{15, 1, invoice.InvoiceStatusOpen},
+		{16, 2, invoice.InvoiceStatusOpen},
+		// cancelled subs — seedSubs indices 17-19
+		{17, 0, invoice.InvoiceStatusPaid},
+		{18, 1, invoice.InvoiceStatusPaid},
+		{19, 3, invoice.InvoiceStatusPaid},
+	}
+
+	for i, cfg := range invoiceConfigs {
+		sub := seedSubs[cfg.subIdx]
+		inv := invoice.Invoice{
+			UserAccountID:  sub.UserAccountID,
+			SubscriptionID: sub.ID,
+			Status:         cfg.status,
+			Paid:           seedPlans[cfg.planIdx].Price,
+			PdfURL:         fmt.Sprintf("https://invoices.example.com/inv_%03d.pdf", i+1),
+		}
+
+		if err := db.Create(&inv).Error; err != nil {
+			slog.Error("Failed to seed invoice", "subscription_id", sub.ID, "error", err)
+			continue
+		}
+		slog.Info("Seeded invoice",
+			"id", inv.ID,
+			"subscription_id", sub.ID,
+			"status", inv.Status,
+			"amount", inv.Paid.Amount,
+			"currency", inv.Paid.Currency,
 		)
 	}
 

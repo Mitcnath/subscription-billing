@@ -60,7 +60,7 @@ func hashPassword(password string) (string, error) {
 	return encoded, nil
 }
 
-func verifyPassword(password string, encodedHash string) (bool, error) {
+func comparePassword(password string, encodedHash string) (bool, error) {
 	parts := strings.Split(encodedHash, "$")
 	if len(parts) != 6 {
 		return false, fmt.Errorf("invalid hash format")
