@@ -1,2 +1,28 @@
-.DS_Store
+# Environment — never commit real credentials
 .env
+*.env.local
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/bin/
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
